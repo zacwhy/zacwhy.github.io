@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Timer</title>
+		<script src="https://fb.me/react-0.13.2.js"></script>
+		<script src="https://fb.me/JSXTransformer-0.13.2.js"></script>
+		<script type="text/javascript" src="names.js"></script>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+		<style type="text/css">
+		#example {
+			margin-top: 30px;
+		}
+		.time-list tr.danger {
+			font-weight: bold;
+		}
+		.time-list .time {
+			text-align: right;
+		}
+		.active-person .talk-time {
+			font-size: 250px;
+		}
+		.active-person .name {
+			font-size: 50px;
+		}
+		</style>
+	</head>
+	<body>
+		<div id="example"></div>
+		<script type="text/jsx">
+			var ActivePerson = React.createClass({
+				render: function() {
+					return (
+						<div className="jumbotron active-person">
+							<h1 className="talk-time">{formatTime(this.props.talkTime)}</h1>
+							<p className="name">{this.props.name}</p>
+						</div>
+					);
+				}
+			});
+			var TimeList = React.createClass({
+				getInitialState: function() {
+					return {
+						activeIndex: -1,
+						talkTimes: Array.apply(null, new Array(this.props.names.length)).map(Number.prototype.valueOf, 0)
+					};
+				},
+				hasActivePerson: function() {
+					return this.state.activeIndex > -1;
+				},
+				getTotalTalkTime: function() {
+					return this.state.talkTimes.reduce(function(previousValue, currentValue) {
+						return previousValue + currentValue;
+					})
+				},
+				componentDidMount: function() {
+					this.interval = setInterval(this.tick, 1000);
+				},
+				componentWillUnmount: function() {
+					clearInterval(this.interval);
+				},
+				tick: function() {
+					if (this.hasActivePerson()) {
+						var talkTimes = this.state.talkTimes;
+						talkTimes[this.state.activeIndex]++;
+
+						this.setState({talkTimes: talkTimes});
+					}
+				},
+				handleSelect: function(i) {
+					var newActiveIndex = (i == this.state.activeIndex) ? -1 : i;
+					this.setState({activeIndex: newActiveIndex});
+				},
+				render: function() {
+					return (
+						<div className="container">
+							<div className="row">
+								<div className="col-sm-4">
+									<table className="table table-bordered table-hover table-striped time-list">
+										<thead>
+											<tr>
+												<th className="time">{formatTime(this.getTotalTalkTime())}</th>
+												<th>Total</th>
+											</tr>
+										</thead>
+										<tbody>
+											{this.props.names.map(function(name, i) {
+												return (
+													<tr onClick={this.handleSelect.bind(this, i)} onTouchStart={this.handleSelect.bind(this, i)} className={(i == this.state.activeIndex) ? "danger" : ""}>
+														<td className="time">{formatTime(this.state.talkTimes[i])}</td>
+														<td>{name}</td>
+													</tr>
+												);
+											}, this)}
+										</tbody>
+									</table>
+								</div>
+								<div className="col-sm-8 hidden-xs">
+									{
+										(this.hasActivePerson())
+										? <ActivePerson name={this.props.names[this.state.activeIndex]} talkTime={this.state.talkTimes[this.state.activeIndex]} />
+										: <div />
+									}
+								</div>
+							</div>
+						</div>
+					);
+				}
+			});
+			
+			var mountNode = document.getElementById('example');
+			React.render(<TimeList names={names} />, mountNode);
+
+
+			function formatTime(d) {
+				d = Number(d);
+
+				var secondsInMinute = 60;
+				var minutesInHour = 60;
+				var secondsInHour = minutesInHour * secondsInMinute;
+
+				var h = Math.floor(d / secondsInHour);
+				var m = Math.floor(d % secondsInHour / secondsInMinute);
+				var s = d % secondsInHour % secondsInMinute;
+
+				return ((h > 0 ? h + ":" + (m < 10 ? "0" : "") : "") + m + ":" + (s < 10 ? "0" : "") + s);
+			}
+		</script>
+	</body>
+</html>

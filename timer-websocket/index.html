@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Timer</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+        <script type="text/javascript" src="config.js"></script>
+        <style>
+        .container {
+            margin: 2em 0;
+        }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="people">
+                <div v-show="people.length">
+                    <table class="table table-bordered table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th>Name ({{ people.length }})</th>
+                                <th>Duration ({{ totalDuration }})</th>
+                                <th>Count ({{ totalSessionCount }})</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-repeat="person: people">
+                                <td v-on="click: selectPerson(person)">{{ person.name }}</td>
+                                <td>{{ getDuration(person) }}</td>
+                                <td>{{ getSessionCount(person) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <form v-on="submit: onSubmit">
+                    <div class="form-group">
+                        <input v-model="personName" v-el="personName" required="required" class="form-control" placeholder="Enter person name" />
+                    </div>
+                </form>
+                <!-- <hr /><pre>{{ $data | json }}</pre> -->
+            </div>
+        </div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/0.11.5/vue.min.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>

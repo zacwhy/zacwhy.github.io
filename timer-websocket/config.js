@@ -1,0 +1,1 @@
+var webSocketUrl = "ws://192.168.5.210:8080/websocket/talk";

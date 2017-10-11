@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <!-- <meta http-equiv="Content-Type" content="text/html; charset=windows-1252"> -->
+        <title></title>
+
+<style>
+textarea {
+    height: 10em;
+    width: 100%;
+}
+button {
+    font-size: x-large;
+    padding: 15px;
+    width: 200px;
+}
+</style>
+
+    </head>
+    <body>
+        <p>
+            I want to:
+            <label><input type="radio" name="action" value="encrypt" /> Encrypt</label>
+            <label><input type="radio" name="action" value="decrypt" checked /> Decrypt</label>
+        </p>
+        <div id="encryptPanel">
+            <p>
+                <label for="encryptPanelPublicKey">Other party's public key</label>
+                <textarea id="encryptPanelPublicKey" placeholder="Enter recipient&#39;s public key here"></textarea>
+            </p>
+            <p>
+                <label for="encryptPanelPlainText">Plain text</label>
+                <textarea id="encryptPanelPlainText" placeholder="Enter text to encrypt here"></textarea>
+                <button id="encryptButton">Encrypt</button>
+            </p>
+            <p>
+                <label for="encryptPanelCipherText">Cipher text</label>
+                <textarea id="encryptPanelCipherText" readonly></textarea>
+            </p>
+        </div>
+        <div id="decryptPanel">
+            <p>
+                <label for="decryptPanelPublicKey">My public key</label>
+                <textarea id="decryptPanelPublicKey" readonly></textarea>
+                <button id="generateKeysButton">Generate keys</button>
+            </p>
+            <p>
+                <label for="decryptPanelCipherText">Cipher text</label>
+                <textarea id="decryptPanelCipherText" placeholder="Enter encrypted text here"></textarea>
+                <button id="decryptButton">Decrypt</button>
+            </p>
+            <p>
+                <label for="decryptPanelPlainText">Plain text</label>
+                <textarea id="decryptPanelPlainText" readonly></textarea>
+            </p>
+        </div>
+
+<script>
+
+var qs = document.querySelector.bind(document);
+var encryptRadio = qs('input[value=encrypt]');
+var decryptRadio = qs('input[value=decrypt]');
+var encryptPanel = qs('#encryptPanel');
+var decryptPanel = qs('#decryptPanel');
+var generateKeysButton = qs('#generateKeysButton');
+var encryptPanelPublicKey = qs('#encryptPanelPublicKey');
+var encryptPanelCipherText = qs('#encryptPanelCipherText');
+var decryptPanelPublicKey = qs('#decryptPanelPublicKey');
+var decryptPanelPlainText = qs('#decryptPanelPlainText');
+
+var showElement = function (element, visible) {
+    element.setAttribute('style', visible ? '' : 'display: none;');
+};
+
+showElement(encryptPanel, encryptRadio.checked);
+showElement(decryptPanel, decryptRadio.checked);
+generateKeysButton.focus();
+
+encryptRadio.addEventListener('change', function() {
+    showElement(encryptPanel, true);
+    showElement(decryptPanel, false);
+    encryptPanelPublicKey.select();
+});
+
+decryptRadio.addEventListener('change', function() {
+    showElement(decryptPanel, true);
+    showElement(encryptPanel, false);
+});
+
+generateKeysButton.addEventListener('click', function() {
+    generateKeysButton.disabled = true;
+    var originalTextContent = generateKeysButton.textContent;
+    generateKeysButton.textContent = 'Generating...';
+
+    generatePublicKey(function (publicKey) {
+        generateKeysButton.disabled = false;
+        generateKeysButton.textContent = originalTextContent;
+        decryptPanelPublicKey.value = publicKey;
+        decryptPanelPublicKey.select();
+    });
+});
+
+qs('#encryptButton').addEventListener('click', function() {
+    encryptData(encryptPanelPublicKey.value, qs('#encryptPanelPlainText').value, function (cipherText) {
+        encryptPanelCipherText.textContent = cipherText;
+        encryptPanelCipherText.select();
+    });
+});
+
+qs('#decryptButton').addEventListener('click', function() {
+    decryptData(privateKey, qs('#decryptPanelCipherText').value, function (plainText) {
+        decryptPanelPlainText.textContent = plainText;
+        decryptPanelPlainText.select();
+    });
+});
+
+var privateKey = null;
+
+function generatePublicKey(callback) {
+    crypto.subtle
+        .generateKey(
+            {
+                name: 'RSA-OAEP',
+                modulusLength: 4096,
+                publicExponent: new Uint8Array([1, 0, 1]),
+                hash: {name: 'SHA-256'}
+            },
+            true,
+            ['encrypt', 'decrypt']
+        )
+        .then(function (pair) {
+            privateKey = pair.privateKey;
+            return crypto.subtle.exportKey('spki', pair.publicKey);
+        })
+        .then(function (result) {
+            var publicKeyHex = arrayToHex(new Uint8Array(result));
+            callback(publicKeyHex);
+        });
+}
+
+function encryptData(key, plainText, callback) {
+    var bufferLength = key.length / 2;
+    var pubBuffer = new ArrayBuffer(bufferLength);
+    var pubView = new Uint8Array(pubBuffer);
+    pubView.set(hexToArray(key));
+
+    crypto.subtle
+        .importKey(
+            'spki',
+            pubBuffer,
+            {
+                name: 'RSA-OAEP',
+                hash: {name: 'SHA-256'}
+            },
+            false,
+            ['encrypt']
+        )
+        .then(function (key) {
+            var vector = crypto.getRandomValues(new Uint8Array(16));
+            return crypto.subtle.encrypt({name: 'RSA-OAEP'}, key, (new TextEncoder).encode(plainText))
+        })
+        .then(function (result) {
+            var cipherText = new Uint8Array(result);
+            var cipherTextHex = arrayToHex(cipherText);
+            callback(cipherTextHex);
+        });
+}
+
+function decryptData(key, cipherTextHex, callback) {
+    var cipherText = hexToArray(cipherTextHex);
+    crypto.subtle
+        .decrypt({name: 'RSA-OAEP'}, key, cipherText)
+        .then(function (result) {
+            var plainTextBytes = new Uint8Array(result);
+            var plainText = (new TextDecoder).decode(plainTextBytes);
+            callback(plainText);
+        });
+}
+
+function arrayToHex(array) {
+    return array.reduce(function (previousValue, currentValue) {
+        return previousValue + (currentValue < 16 ? '0' : '') + currentValue.toString(16);
+    }, '');
+}
+
+function hexToArray(hex) {
+    return new Uint8Array(hex.match(/../g).map(function (currentValue) {
+        return parseInt(currentValue, 16);
+    }));
+}
+
+</script>
+
+    </body>
+</html>
